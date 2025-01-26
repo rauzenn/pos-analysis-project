@@ -1,0 +1,69 @@
+import stanza
+import csv
+
+# Stanza'nın Türkçe paketi yükleniyor
+stanza.download("tr")
+
+# Türkçe NLP pipeline'ı başlatılıyor
+nlp = stanza.Pipeline("tr")
+
+# TXT dosyasını okuma fonksiyonu
+def read_txt(file_name):
+    with open(file_name, "r", encoding="utf-8") as file:
+        return file.read()
+
+# Cümle öğelerini analiz eden fonksiyon
+def analyze_sentence_elements(text):
+    doc = nlp(text)
+    sentence_elements = []
+    
+    for sentence in doc.sentences:
+        elements = {
+            "Cümle": sentence.text,
+            "Özne": [],
+            "Yüklem": [],
+            "Nesne": [],
+            "Zarf Tümleci": []
+        }
+        for word in sentence.words:
+            if word.deprel == "nsubj":  # Özne
+                elements["Özne"].append(word.text)
+            elif word.deprel == "root":  # Yüklem
+                elements["Yüklem"].append(word.text)
+            elif word.deprel == "obj":  # Nesne
+                elements["Nesne"].append(word.text)
+            elif word.deprel in ["advmod", "obl"]:  # Zarf tümleci
+                elements["Zarf Tümleci"].append(word.text)
+        # Ögeleri liste yerine metin olarak kaydet
+        for key in ["Özne", "Yüklem", "Nesne", "Zarf Tümleci"]:
+            elements[key] = ", ".join(elements[key])
+        sentence_elements.append(elements)
+    return sentence_elements
+
+# Sonuçları CSV dosyasına yazma fonksiyonu
+def save_sentence_elements_to_csv(sentence_elements, output_file):
+    with open(output_file, mode="w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=["Cümle", "Özne", "Yüklem", "Nesne", "Zarf Tümleci"])
+        writer.writeheader()
+        writer.writerows(sentence_elements)
+
+# Girdi metin dosyaları
+file_names = ["/workspaces/pos-analysis-project/Chat Çevirisi.txt", "/workspaces/pos-analysis-project/harry-potter-felsefe-tasi.txt", "/workspaces/pos-analysis-project/The Sorcerer's Stone.txt"]
+
+# Her dosya için analiz yapılıyor
+for file_name in file_names:
+    print(f"Analiz ediliyor: {file_name}")
+    try:
+        # Metni oku
+        text = read_txt(file_name)
+        # Cümlelerin öğelerini analiz et
+        sentence_elements = analyze_sentence_elements(text)
+        
+        # Sonuçları kaydet
+        output_file = file_name.replace(".txt", "_sentence_elements.csv")
+        save_sentence_elements_to_csv(sentence_elements, output_file)
+        print(f"{file_name} için cümle öğeleri analizi tamamlandı. Sonuçlar {output_file} dosyasına kaydedildi.")
+    except FileNotFoundError:
+        print(f"HATA: {file_name} dosyası bulunamadı.")
+    except Exception as e:
+        print(f"HATA: {file_name} dosyasının analizi sırasında bir hata oluştu: {e}")
