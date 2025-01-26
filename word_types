@@ -1,0 +1,95 @@
+import stanza
+import csv
+
+# Stanza'nın Türkçe paketi yükleniyor
+stanza.download("tr")
+
+# Türkçe NLP pipeline'ı başlatılıyor
+nlp = stanza.Pipeline("tr")
+
+# TXT dosyasını okuma fonksiyonu
+def read_txt(file_name):
+    with open(file_name, "r", encoding="utf-8") as file:
+        return file.read()
+
+# Sözcük türlerini analiz eden fonksiyon
+def analyze_word_types(text):
+    doc = nlp(text)
+    word_types = {
+        "İsim": 0,
+        "Zamir": 0,
+        "Fiil": 0,
+        "Sıfat": 0,
+        "Zarf": 0,
+        "Bağlaç": 0,
+        "Edat": 0,
+        "Ünlem": 0,
+    }
+    details = []
+
+    for sentence in doc.sentences:
+        for word in sentence.words:
+            pos = word.upos  # Universal POS tag
+            if pos == "NOUN":
+                word_types["İsim"] += 1
+                details.append({"Kelime": word.text, "Tür": "İsim"})
+            elif pos == "PRON":
+                word_types["Zamir"] += 1
+                details.append({"Kelime": word.text, "Tür": "Zamir"})
+            elif pos == "VERB":
+                word_types["Fiil"] += 1
+                details.append({"Kelime": word.text, "Tür": "Fiil"})
+            elif pos == "ADJ":
+                word_types["Sıfat"] += 1
+                details.append({"Kelime": word.text, "Tür": "Sıfat"})
+            elif pos == "ADV":
+                word_types["Zarf"] += 1
+                details.append({"Kelime": word.text, "Tür": "Zarf"})
+            elif pos == "CCONJ" or pos == "SCONJ":
+                word_types["Bağlaç"] += 1
+                details.append({"Kelime": word.text, "Tür": "Bağlaç"})
+            elif pos == "ADP":
+                word_types["Edat"] += 1
+                details.append({"Kelime": word.text, "Tür": "Edat"})
+            elif pos == "INTJ":
+                word_types["Ünlem"] += 1
+                details.append({"Kelime": word.text, "Tür": "Ünlem"})
+
+    return word_types, details
+
+# Sonuçları CSV dosyasına yazma fonksiyonu
+def save_word_types_to_csv(word_types, details, output_file):
+    # Türlerin toplamını kaydet
+    summary_file = output_file.replace(".csv", "_summary.csv")
+    with open(summary_file, mode="w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Tür", "Sayı"])
+        for word_type, count in word_types.items():
+            writer.writerow([word_type, count])
+
+    # Detaylı kelime türlerini kaydet
+    with open(output_file, mode="w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=["Kelime", "Tür"])
+        writer.writeheader()
+        writer.writerows(details)
+
+# Girdi metin dosyaları
+file_names = ["/workspaces/pos-analysis-project/Chat Çevirisi.txt", "/workspaces/pos-analysis-project/harry-potter-felsefe-tasi.txt", "/workspaces/pos-analysis-project/The Sorcerer's Stone.txt"]
+
+# Her dosya için analiz yapılıyor
+for file_name in file_names:
+    print(f"Analiz ediliyor: {file_name}")
+    try:
+        # Metni oku
+        text = read_txt(file_name)
+        # Sözcük türlerini analiz et
+        word_types, details = analyze_word_types(text)
+        
+        # Sonuçları kaydet
+        output_file = file_name.replace(".txt", "_word_types.csv")
+        save_word_types_to_csv(word_types, details, output_file)
+        print(f"{file_name} için sözcük türü analizi tamamlandı. Sonuçlar {output_file} ve özet bilgiler _summary.csv dosyasına kaydedildi.")
+    except FileNotFoundError:
+        print(f"HATA: {file_name} dosyası bulunamadı.")
+    except Exception as e:
+        print(f"HATA: {file_name} dosyasının analizi sırasında bir hata oluştu: {e}")
