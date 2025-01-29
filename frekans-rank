@@ -1,0 +1,50 @@
+import stanza
+from collections import Counter
+import pandas as pd
+
+# Stanza Türkçe modelini indir ve yükle
+stanza.download("tr")
+nlp_stanza = stanza.Pipeline("tr")
+
+def analyze_text_stanza(text):
+    doc = nlp_stanza(text)
+    pos_counts = Counter()
+    word_counts = Counter()
+    
+    for sentence in doc.sentences:
+        for word in sentence.words:
+            pos_counts[word.upos] += 1  # UPOS (Evrensel POS etiketleri)
+            if word.upos not in {"PUNCT", "SYM", "X"}:  # Noktalama işaretlerini hariç tut
+                word_counts[word.text.lower()] += 1
+    
+    return pos_counts, word_counts
+
+def generate_rank_table(word_counts, pos_counts):
+    rank_data = []
+    
+    for rank, (word, freq) in enumerate(word_counts.most_common(10), start=1):
+        rank_data.append([rank, word, freq])
+    
+    df_words = pd.DataFrame(rank_data, columns=["Rank No", "Word", "Frequency"])
+    df_pos = pd.DataFrame(pos_counts.items(), columns=["POS", "Count"])
+    
+    return df_words, df_pos
+
+def main():
+    with open("/workspaces/pos-analysis-project/harry-potter-felsefe-tasi.txt", "r", encoding="utf-8") as file:
+        text = file.read()
+    
+    pos_counts, word_counts = analyze_text_stanza(text)
+    df_words, df_pos = generate_rank_table(word_counts, pos_counts)
+    
+    print("Most Common Words:")
+    print(df_words)
+    print("\nPOS Counts:")
+    print(df_pos)
+    
+    df_words.to_csv("word_frequencies.csv", index=False)
+    df_pos.to_csv("pos_counts.csv", index=False)
+    print("\nResults saved as CSV files.")
+
+if __name__ == "__main__":
+    main()
