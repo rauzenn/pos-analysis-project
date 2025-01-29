@@ -1,0 +1,75 @@
+import stanza
+from collections import Counter
+import pandas as pd
+
+# Stanza Türkçe modeli yükleniyor
+print("Modeller yükleniyor...")
+stanza.download("tr")
+nlp_stanza = stanza.Pipeline("tr")
+
+# Metin dosyasının adı
+file_name = "/workspaces/pos-analysis-project/harry-potter-felsefe-tasi.txt"  # Metin dosyasını buraya girin
+
+# Metni yükle
+with open(file_name, "r", encoding="utf-8") as file:
+    text = file.read()
+
+# Analiz yap
+print("Analiz yapılıyor...")
+doc = nlp_stanza(text)
+
+# Sözlük türlerini gruplamak için Counter nesneleri
+pos_counters = {
+    "İsim": Counter(),
+    "Zamir": Counter(),
+    "Fiil": Counter(),
+    "Sıfat": Counter(),
+    "Zarf": Counter(),
+    "Bağlaç": Counter(),
+    "Edat": Counter(),
+    "Ünlem": Counter(),
+}
+
+# Stanza POS etiketlerini bizim türlerimizle eşleştir
+pos_mapping = {
+    "NOUN": "İsim",
+    "PRON": "Zamir",
+    "VERB": "Fiil",
+    "ADJ": "Sıfat",
+    "ADV": "Zarf",
+    "CCONJ": "Bağlaç",
+    "SCONJ": "Bağlaç",
+    "ADP": "Edat",
+    "INTJ": "Ünlem",
+}
+
+# Kelimeleri ve türlerini işleyerek gruplandır
+for sentence in doc.sentences:
+    for word in sentence.words:
+        word_text = word.text.lower()  # Küçük harfe çevir
+        pos = pos_mapping.get(word.upos, None)  # Tür eşlemesi yap
+        if pos:
+            pos_counters[pos][word_text] += 1
+
+# Her tür için en sık kullanılan kelimeleri ve frekanslarını bul
+results = {}
+for pos, counter in pos_counters.items():
+    results[pos] = counter.most_common(10)  # En çok kullanılan 10 kelime
+
+# Sonuçları tabloya yazdır
+print("Sonuçlar:")
+for pos, common_words in results.items():
+    print(f"\n{pos}:")
+    for word, freq in common_words:
+        print(f"{word}: {freq}")
+
+# Verileri DataFrame'e dönüştür ve CSV olarak kaydet
+data = []
+for pos, common_words in results.items():
+    for word, freq in common_words:
+        data.append({"Sözcük Türü": pos, "Kelime": word, "Frekans": freq})
+
+df = pd.DataFrame(data)
+df.to_csv("pos_analysis_results.csv", index=False, encoding="utf-8-sig")
+
+print("Analiz tamamlandı. Sonuçlar 'pos_analysis_results.csv' dosyasına kaydedildi.")
